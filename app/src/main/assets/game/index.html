@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Desi Offroad — Rise of the Village</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@600;700&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Three.js 3D Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="js/three.min.js"><\/script>');
+        }
+    </script>
+</head>
+<body>
+    <div id="game-container">
+        <!-- 3D Canvas container -->
+        <div id="canvas-container"></div>
+
+        <!-- ================= HUD (IN-GAME) ================= -->
+        <div id="game-hud" class="screen-layer hidden">
+            <!-- Top Status Bar -->
+            <div class="hud-top-bar">
+                <div class="hud-pill stat-coins">
+                    <span class="hud-icon">🪙</span>
+                    <span id="hud-coins-val">3,000</span>
+                </div>
+                <div class="hud-pill stat-fuel">
+                    <span class="hud-icon">⛽</span>
+                    <div class="bar-container">
+                        <div id="hud-fuel-fill" class="bar-fill fuel-fill" style="width: 100%;"></div>
+                    </div>
+                    <span id="hud-fuel-pct">100%</span>
+                </div>
+                <div class="hud-pill stat-health">
+                    <span class="hud-icon">🛠️</span>
+                    <div class="bar-container">
+                        <div id="hud-health-fill" class="bar-fill health-fill" style="width: 100%;"></div>
+                    </div>
+                    <span id="hud-health-pct">100%</span>
+                </div>
+                <div class="hud-actions">
+                    <button id="btn-hud-map" class="hud-btn-mini" title="World Map">🗺️</button>
+                    <button id="btn-hud-cam" class="hud-btn-mini" title="Camera Mode">📷 <span id="cam-mode-label">3RD</span></button>
+                    <button id="btn-hud-pause" class="hud-btn-mini" title="Pause Game">⏸️</button>
+                </div>
+            </div>
+
+            <!-- Mission Floating Objective Banner -->
+            <div id="hud-mission-banner" class="hud-mission-banner hidden">
+                <div class="mission-banner-icon">🎯</div>
+                <div class="mission-banner-info">
+                    <div id="hud-mission-title" class="mission-title">Mission: Village Supply Run</div>
+                    <div id="hud-mission-desc" class="mission-desc">Deliver cargo to the hill temple safely.</div>
+                </div>
+                <div id="hud-mission-timer" class="mission-timer-badge">02:30</div>
+            </div>
+
+            <!-- Mini-map & Compass (Top Right) -->
+            <div class="minimap-wrapper">
+                <canvas id="minimap-canvas" width="130" height="130"></canvas>
+                <div class="minimap-compass-label" id="minimap-compass">N</div>
+                <div class="minimap-speed-badge"><span id="hud-gear-label">4H</span></div>
+            </div>
+
+            <!-- Vehicle Dials & Instruments (Bottom Center) -->
+            <div class="instrument-cluster">
+                <div class="dial-container">
+                    <div class="digital-speed"><span id="hud-speed-val">0</span><span class="speed-unit">KM/H</span></div>
+                    <div class="rpm-bar-wrap">
+                        <div id="hud-rpm-fill" class="rpm-bar-fill"></div>
+                    </div>
+                    <div class="sub-dials">
+                        <span id="hud-drive-mode" class="mode-badge active">4x4 AWD</span>
+                        <span id="hud-diff-badge" class="mode-badge">DIFF LOCK</span>
+                        <span id="hud-weather-badge" class="mode-badge">☀️ SUNNY</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Touch Controls - Left (Steering & Quick Toggles) -->
+            <div class="touch-controls-left">
+                <div class="quick-toggles-row">
+                    <button id="btn-horn" class="game-btn circle-btn horn-btn" title="Desi Melodic Horn">🎺</button>
+                    <button id="btn-headlights" class="game-btn circle-btn light-btn" title="Headlights">💡</button>
+                    <button id="btn-4x4-toggle" class="game-btn circle-btn mode-btn" title="4x4 High/Low">4x4</button>
+                    <button id="btn-reset-car" class="game-btn circle-btn reset-btn" title="Recover Vehicle">🔄</button>
+                </div>
+                <div class="steering-dpad">
+                    <button id="btn-steer-left" class="game-btn steer-btn left-arrow">◀</button>
+                    <button id="btn-steer-right" class="game-btn steer-btn right-arrow">▶</button>
+                </div>
+            </div>
+
+            <!-- Touch Controls - Right (Pedals & Handbrake) -->
+            <div class="touch-controls-right">
+                <div class="pedal-cluster">
+                    <button id="btn-handbrake" class="game-btn handbrake-btn">HANDBRAKE</button>
+                    <div class="pedals-row">
+                        <button id="btn-brake-reverse" class="game-btn pedal-btn brake-pedal">
+                            <span class="pedal-icon">🛑</span>
+                            <span class="pedal-text">BRAKE / REV</span>
+                        </button>
+                        <button id="btn-accelerate" class="game-btn pedal-btn gas-pedal">
+                            <span class="pedal-icon">⚡</span>
+                            <span class="pedal-text">THROTTLE</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MAIN MENU SCREEN ================= -->
+        <div id="screen-main-menu" class="screen-layer">
+            <div class="menu-hero-header">
+                <div class="game-badge">OFF-ROAD SIMULATOR</div>
+                <h1 class="game-title">DESI OFFROAD</h1>
+                <h2 class="game-subtitle">RISE OF THE VILLAGE</h2>
+            </div>
+
+            <!-- Player Profile Summary Pill -->
+            <div class="player-top-card glass-panel" id="menu-player-card">
+                <div class="driver-avatar-circle">🤠</div>
+                <div class="driver-info">
+                    <div class="driver-name-row">
+                        <span id="menu-username">DesiRider_007</span>
+                        <span class="level-badge" id="menu-level-badge">LVL 1</span>
+                    </div>
+                    <div class="xp-bar-container">
+                        <div id="menu-xp-fill" class="xp-fill" style="width: 30%;"></div>
+                    </div>
+                    <div class="driver-sub-row">
+                        <span>XP: <b id="menu-xp-val">150/500</b></span>
+                        <span>Rep: <b id="menu-rep-val">⭐ 120</b></span>
+                    </div>
+                </div>
+                <div class="currency-pill">
+                    <span>🪙</span>
+                    <span id="menu-coins-val">3,000</span>
+                </div>
+            </div>
+
+            <!-- Main Menu Buttons Column -->
+            <div class="main-menu-actions">
+                <button id="btn-menu-play" class="desi-btn btn-primary-play glow-pulse">
+                    <span class="btn-icon">🚜</span> FREE ROAM / DRIVE
+                </button>
+                <button id="btn-menu-missions" class="desi-btn btn-action">
+                    <span class="btn-icon">🎯</span> MISSIONS & CHALLENGES
+                </button>
+                <button id="btn-menu-garage" class="desi-btn btn-action">
+                    <span class="btn-icon">🔧</span> GARAGE & TUNING
+                </button>
+                <button id="btn-menu-map" class="desi-btn btn-action">
+                    <span class="btn-icon">🗺️</span> VILLAGE WORLD MAP
+                </button>
+                
+                <div class="menu-row-grid">
+                    <button id="btn-menu-shop" class="desi-btn btn-secondary">
+                        <span class="btn-icon">🛒</span> SHOP
+                    </button>
+                    <button id="btn-menu-leaderboard" class="desi-btn btn-secondary">
+                        <span class="btn-icon">🏆</span> RANKINGS
+                    </button>
+                    <button id="btn-menu-profile" class="desi-btn btn-secondary">
+                        <span class="btn-icon">👤</span> PROFILE
+                    </button>
+                    <button id="btn-menu-settings" class="desi-btn btn-secondary">
+                        <span class="btn-icon">⚙️</span> SETTINGS
+                    </button>
+                </div>
+            </div>
+
+            <!-- Current Vehicle Card Footer -->
+            <div class="current-vehicle-footer glass-panel">
+                <div class="veh-icon-label">🚗 CURRENT RIDE:</div>
+                <div class="veh-name" id="menu-current-veh-name">Desi Thar 4x4</div>
+                <div class="veh-stats-micro">
+                    <span>Power: <b>85%</b></span>
+                    <span>Traction: <b>90%</b></span>
+                    <span>Armor: <b>80%</b></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= GARAGE & TUNING SCREEN ================= -->
+        <div id="screen-garage" class="screen-layer hidden">
+            <div class="screen-header glass-panel">
+                <button class="back-btn" id="btn-garage-back">⬅ BACK</button>
+                <h2 class="screen-title">GARAGE & SHOWROOM</h2>
+                <div class="currency-pill"><span>🪙</span><span id="garage-coins-val">3,000</span></div>
+            </div>
+
+            <div class="garage-content-grid">
+                <!-- Vehicle Carousel / Switcher -->
+                <div class="garage-vehicle-selector glass-panel">
+                    <button id="btn-prev-veh" class="carousel-arrow">◀</button>
+                    <div class="vehicle-info-center">
+                        <h3 id="garage-veh-name">Desi Thar 4x4</h3>
+                        <div class="veh-class-tag" id="garage-veh-type">4x4 ALL-TERRAIN JEEP</div>
+                        <div id="garage-ownership-badge" class="owned-tag">OWNED & EQUIPPED</div>
+                    </div>
+                    <button id="btn-next-veh" class="carousel-arrow">▶</button>
+                </div>
+
+                <!-- Tabs: Upgrades vs Customization -->
+                <div class="garage-tabs-wrapper">
+                    <div class="tab-headers">
+                        <button id="tab-btn-upgrades" class="tab-btn active">PERFORMANCE TUNING</button>
+                        <button id="tab-btn-custom" class="tab-btn">VISUAL CUSTOMIZATION</button>
+                    </div>
+
+                    <!-- TAB 1: Upgrades -->
+                    <div id="tab-content-upgrades" class="tab-pane active glass-panel">
+                        <div class="upgrades-list" id="upgrades-list-container">
+                            <!-- Injected by js -->
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: Customization -->
+                    <div id="tab-content-custom" class="tab-pane glass-panel">
+                        <div class="customization-controls">
+                            <!-- Color Swatches -->
+                            <div class="custom-section">
+                                <label class="section-label">🎨 BODY PAINT COLOR</label>
+                                <div class="color-palette" id="paint-color-swatches">
+                                    <div class="swatch selected" data-color="#E53935" style="background:#E53935;"></div>
+                                    <div class="swatch" data-color="#1E88E5" style="background:#1E88E5;"></div>
+                                    <div class="swatch" data-color="#43A047" style="background:#43A047;"></div>
+                                    <div class="swatch" data-color="#FB8C00" style="background:#FB8C00;"></div>
+                                    <div class="swatch" data-color="#212121" style="background:#212121;"></div>
+                                    <div class="swatch" data-color="#FDD835" style="background:#FDD835;"></div>
+                                    <div class="swatch" data-color="#6D4C41" style="background:#6D4C41;"></div>
+                                    <div class="swatch" data-color="#8E24AA" style="background:#8E24AA;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Decals -->
+                            <div class="custom-section">
+                                <label class="section-label">🏷️ DESI STICKERS & DECALS</label>
+                                <div class="option-pills" id="decal-options">
+                                    <button class="pill-btn selected" data-decal="NONE">None</button>
+                                    <button class="pill-btn" data-decal="DESI_KING">Desi King</button>
+                                    <button class="pill-btn" data-decal="HORN_OK">Horn OK Please</button>
+                                    <button class="pill-btn" data-decal="BURA_MAT_DEKHO">Bura Mat Dekho</button>
+                                    <button class="pill-btn" data-decal="VILLAGE_WARRIOR">Village Warrior</button>
+                                </div>
+                            </div>
+
+                            <!-- Roof Rack & Accessories -->
+                            <div class="custom-section">
+                                <label class="section-label">🧳 ROOF ACCESSORIES</label>
+                                <div class="option-pills" id="roof-options">
+                                    <button class="pill-btn selected" data-roof="STANDARD">Standard</button>
+                                    <button class="pill-btn" data-roof="CARRIER_LUGGAGE">Cargo Carrier + Luggage</button>
+                                    <button class="pill-btn" data-roof="LIGHTBAR">Off-Road LED Lightbar</button>
+                                    <button class="pill-btn" data-roof="SAFARI_RACK">Safari Expedition Rack</button>
+                                </div>
+                            </div>
+
+                            <!-- Bullbar & Bumper -->
+                            <div class="custom-section">
+                                <label class="section-label">🛡️ FRONT BULLBAR & WINCH</label>
+                                <div class="option-pills" id="bumper-options">
+                                    <button class="pill-btn selected" data-bumper="STANDARD">Stock Bumper</button>
+                                    <button class="pill-btn" data-bumper="HEAVY_BULLBAR">Heavy Duty Bullbar</button>
+                                    <button class="pill-btn" data-bumper="WINCH_GUARD">Winch & Steel Guard</button>
+                                </div>
+                            </div>
+
+                            <!-- Suspension Lift Kit -->
+                            <div class="custom-section">
+                                <label class="section-label">🚜 SUSPENSION LIFT KIT: <span id="lift-label">Stock (+0%)</span></label>
+                                <input type="range" id="slider-suspension-lift" min="1.0" max="1.5" step="0.05" value="1.0" class="desi-slider">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Action Buttons -->
+                <div class="garage-action-footer">
+                    <button id="btn-buy-equip-veh" class="desi-btn btn-primary-play">EQUIP VEHICLE</button>
+                    <button id="btn-test-drive" class="desi-btn btn-secondary">TEST DRIVE IN VILLAGE</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MISSIONS SCREEN ================= -->
+        <div id="screen-missions" class="screen-layer hidden">
+            <div class="screen-header glass-panel">
+                <button class="back-btn" id="btn-missions-back">⬅ BACK</button>
+                <h2 class="screen-title">VILLAGE MISSION BOARD</h2>
+                <div class="currency-pill"><span>🪙</span><span id="missions-coins-val">3,000</span></div>
+            </div>
+
+            <div class="missions-grid-container" id="missions-list-container">
+                <!-- Injected dynamically -->
+            </div>
+        </div>
+
+        <!-- ================= WORLD MAP SCREEN ================= -->
+        <div id="screen-map" class="screen-layer hidden">
+            <div class="screen-header glass-panel">
+                <button class="back-btn" id="btn-map-back">⬅ BACK</button>
+                <h2 class="screen-title">DESI VILLAGE EXPLORER MAP</h2>
+                <button id="btn-map-teleport" class="desi-btn btn-small">FAST TRAVEL</button>
+            </div>
+
+            <div class="world-map-wrapper glass-panel">
+                <canvas id="large-map-canvas" width="600" height="400"></canvas>
+                <div class="map-legend">
+                    <div class="legend-item"><span class="legend-dot village"></span> Village Hub</div>
+                    <div class="legend-item"><span class="legend-dot garage"></span> Garage / Fuel</div>
+                    <div class="legend-item"><span class="legend-dot mission"></span> Active Mission</div>
+                    <div class="legend-item"><span class="legend-dot mountain"></span> Mud / Mountain Peak</div>
+                    <div class="legend-item"><span class="legend-dot player"></span> Your Jeep</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= LEADERBOARD SCREEN ================= -->
+        <div id="screen-leaderboard" class="screen-layer hidden">
+            <div class="screen-header glass-panel">
+                <button class="back-btn" id="btn-leaderboard-back">⬅ BACK</button>
+                <h2 class="screen-title">OFF-ROAD LEADERBOARD</h2>
+                <div class="tab-pills-mini">
+                    <button id="btn-lb-alltime" class="mini-pill active">GLOBAL</button>
+                    <button id="btn-lb-weekly" class="mini-pill">WEEKLY</button>
+                </div>
+            </div>
+
+            <div class="leaderboard-table-container glass-panel">
+                <div class="table-header-row">
+                    <span>RANK</span>
+                    <span>DRIVER</span>
+                    <span>LEVEL</span>
+                    <span>BEST TIME</span>
+                    <span>SCORE</span>
+                </div>
+                <div class="table-body-scroll" id="leaderboard-rows-container">
+                    <!-- Injected dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PROFILE SCREEN ================= -->
+        <div id="screen-profile" class="screen-layer hidden">
+            <div class="screen-header glass-panel">
+                <button class="back-btn" id="btn-profile-back">⬅ BACK</button>
+                <h2 class="screen-title">DRIVER PROFILE & STATS</h2>
+                <button id="btn-profile-logout" class="desi-btn btn-small btn-danger">LOGOUT</button>
+            </div>
+
+            <div class="profile-card-large glass-panel">
+                <div class="profile-avatar-banner">
+                    <div class="avatar-large">🚜</div>
+                    <div class="profile-meta">
+                        <h2 id="prof-username">DesiRider_007</h2>
+                        <div class="prof-tag" id="prof-email">desirider@village.in</div>
+                        <div class="level-bar-wrap">
+                            <span id="prof-level-txt">Level 1 Offroader</span>
+                            <div class="xp-bar-container"><div id="prof-xp-fill" class="xp-fill"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-number" id="prof-coins-stat">3,000</div>
+                        <div class="stat-name">🪙 Coins Earned</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="prof-rep-stat">120</div>
+                        <div class="stat-name">⭐ Reputation</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="prof-missions-stat">0 / 8</div>
+                        <div class="stat-name">🎯 Missions Done</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="prof-vehicles-stat">1 / 5</div>
+                        <div class="stat-name">🚗 Vehicles Owned</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SHOP SCREEN ================= -->
+        <div id="screen-shop" class="screen-layer hidden">
+            <div class="screen-header glass-panel">
+                <button class="back-btn" id="btn-shop-back">⬅ BACK</button>
+                <h2 class="screen-title">VILLAGE TRADING POST</h2>
+                <div class="currency-pill"><span>🪙</span><span id="shop-coins-val">3,000</span></div>
+            </div>
+
+            <div class="shop-cards-grid">
+                <div class="shop-item-card glass-panel">
+                    <div class="shop-icon">⛽</div>
+                    <div class="shop-title">Full Fuel Jerry Can</div>
+                    <div class="shop-desc">Instant 100% fuel refill on the go during long missions.</div>
+                    <button class="desi-btn btn-action btn-buy-shop" data-item="fuel" data-cost="200">BUY (200 🪙)</button>
+                </div>
+                <div class="shop-item-card glass-panel">
+                    <div class="shop-icon">🧰</div>
+                    <div class="shop-title">Emergency Toolkit</div>
+                    <div class="shop-desc">Instant field repair restoring 100% vehicle armor health.</div>
+                    <button class="desi-btn btn-action btn-buy-shop" data-item="repair" data-cost="350">BUY (350 🪙)</button>
+                </div>
+                <div class="shop-item-card glass-panel">
+                    <div class="shop-icon">⭐</div>
+                    <div class="shop-title">Village Respect Booster</div>
+                    <div class="shop-desc">Earn +50 Reputation and instantly unlock special missions.</div>
+                    <button class="desi-btn btn-action btn-buy-shop" data-item="rep" data-cost="800">BUY (800 🪙)</button>
+                </div>
+                <div class="shop-item-card glass-panel">
+                    <div class="shop-icon">💰</div>
+                    <div class="shop-title">Sardar's Gold Bag</div>
+                    <div class="shop-desc">Bonus village harvest reward package (+2,500 coins).</div>
+                    <button class="desi-btn btn-primary-play btn-buy-shop" data-item="coinpack" data-cost="0">CLAIM GIFT</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SETTINGS SCREEN ================= -->
+        <div id="screen-settings" class="screen-layer hidden">
+            <div class="screen-header glass-panel">
+                <button class="back-btn" id="btn-settings-back">⬅ BACK</button>
+                <h2 class="screen-title">GAME SETTINGS</h2>
+            </div>
+
+            <div class="settings-container glass-panel">
+                <div class="settings-row">
+                    <label>🔊 Sound FX (Engine / Horn)</label>
+                    <input type="range" id="setting-sound-vol" min="0" max="1" step="0.1" value="0.8" class="desi-slider">
+                </div>
+                <div class="settings-row">
+                    <label>🎵 Music & Ambient Audio</label>
+                    <input type="range" id="setting-music-vol" min="0" max="1" step="0.1" value="0.6" class="desi-slider">
+                </div>
+                <div class="settings-row">
+                    <label>🎮 Graphics Quality</label>
+                    <div class="option-pills" id="setting-graphics-pills">
+                        <button class="pill-btn" data-quality="LOW">LOW (Battery Saver)</button>
+                        <button class="pill-btn" data-quality="MEDIUM">MEDIUM</button>
+                        <button class="pill-btn selected" data-quality="HIGH">HIGH (Full 3D FX)</button>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <label>🕹️ Steering Sensitivity</label>
+                    <input type="range" id="setting-steer-sens" min="0.5" max="2.0" step="0.1" value="1.0" class="desi-slider">
+                </div>
+                <div class="settings-row">
+                    <label>⛅ Dynamic Weather Override</label>
+                    <div class="option-pills" id="setting-weather-pills">
+                        <button class="pill-btn selected" data-weather="AUTO">DYNAMIC</button>
+                        <button class="pill-btn" data-weather="SUNNY">SUNNY</button>
+                        <button class="pill-btn" data-weather="RAIN">RAIN</button>
+                        <button class="pill-btn" data-weather="FOG">FOG</button>
+                    </div>
+                </div>
+                <div class="settings-actions">
+                    <button id="btn-save-settings" class="desi-btn btn-primary-play">SAVE SETTINGS</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PAUSE MODAL ================= -->
+        <div id="modal-pause" class="modal-overlay hidden">
+            <div class="modal-card glass-panel">
+                <h2 class="modal-title">GAME PAUSED</h2>
+                <div class="modal-menu-actions">
+                    <button id="btn-resume-game" class="desi-btn btn-primary-play">RESUME DRIVING</button>
+                    <button id="btn-pause-restart" class="desi-btn btn-action">RESTART AT VILLAGE</button>
+                    <button id="btn-pause-settings" class="desi-btn btn-secondary">SETTINGS</button>
+                    <button id="btn-pause-quit" class="desi-btn btn-danger">QUIT TO MAIN MENU</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MISSION VICTORY MODAL ================= -->
+        <div id="modal-mission-complete" class="modal-overlay hidden">
+            <div class="modal-card victory-card glass-panel">
+                <div class="victory-trophy">🏆</div>
+                <h2 class="modal-title">MISSION COMPLETED!</h2>
+                <div class="star-rating-row" id="victory-stars">
+                    <span>⭐</span><span>⭐</span><span>⭐</span>
+                </div>
+                <div class="victory-stats-row">
+                    <div class="vstat">
+                        <span class="vstat-lbl">Time:</span>
+                        <b id="victory-time-val">01:42</b>
+                    </div>
+                    <div class="vstat">
+                        <span class="vstat-lbl">Damage:</span>
+                        <b id="victory-damage-val">4%</b>
+                    </div>
+                </div>
+                <div class="rewards-box">
+                    <div class="reward-pill">🪙 +<span id="victory-coins-val">1,200</span> Coins</div>
+                    <div class="reward-pill">⚡ +<span id="victory-xp-val">350</span> XP</div>
+                </div>
+                <div class="victory-actions">
+                    <button id="btn-victory-continue" class="desi-btn btn-primary-play">CONTINUE</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= GAME OVER / TOW TRUCK MODAL ================= -->
+        <div id="modal-game-over" class="modal-overlay hidden">
+            <div class="modal-card defeat-card glass-panel">
+                <div class="defeat-icon" id="gameover-icon">💥</div>
+                <h2 class="modal-title" id="gameover-title">VEHICLE WRECKED!</h2>
+                <p class="modal-msg" id="gameover-msg">Your 4x4 took too much off-road damage. Village mechanics had to tow it back.</p>
+                <div class="defeat-actions">
+                    <button id="btn-gameover-respawn" class="desi-btn btn-primary-play">TOW & REPAIR (FREE)</button>
+                    <button id="btn-gameover-menu" class="desi-btn btn-secondary">RETURN TO GARAGE</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= AUTH MODAL (LOGIN / REGISTER) ================= -->
+        <div id="modal-auth" class="modal-overlay hidden">
+            <div class="modal-card auth-card glass-panel">
+                <h2 class="modal-title" id="auth-title">DRIVER REGISTRATION</h2>
+                <div class="auth-tabs">
+                    <button id="tab-auth-register" class="auth-tab-btn active">NEW DRIVER</button>
+                    <button id="tab-auth-login" class="auth-tab-btn">LOGIN</button>
+                </div>
+                <form id="form-auth" class="auth-form">
+                    <div class="form-group">
+                        <label>Driver Username</label>
+                        <input type="text" id="auth-username-input" class="desi-input" placeholder="e.g. Desi_King_4x4" required>
+                    </div>
+                    <div class="form-group" id="auth-email-group">
+                        <label>Email Address</label>
+                        <input type="email" id="auth-email-input" class="desi-input" placeholder="driver@village.in">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="auth-password-input" class="desi-input" placeholder="••••••••" required>
+                    </div>
+                    <div id="auth-error-msg" class="auth-error hidden"></div>
+                    <button type="submit" id="btn-auth-submit" class="desi-btn btn-primary-play">START ADVENTURE</button>
+                    <button type="button" id="btn-auth-guest" class="desi-btn btn-secondary">PLAY AS GUEST</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ================= LOADING SCREEN ================= -->
+        <div id="screen-loading" class="screen-layer">
+            <div class="loading-center">
+                <div class="loading-icon-anim">🚜</div>
+                <h1 class="loading-title">DESI OFFROAD</h1>
+                <h3 class="loading-subtitle">RISE OF THE VILLAGE</h3>
+                <div class="loading-bar-wrap">
+                    <div id="loading-bar-fill" class="loading-bar-fill"></div>
+                </div>
+                <div id="loading-status-txt" class="loading-status">Building Indian Rural Terrain & Mud Physics...</div>
+                <div class="loading-tip">💡 TIP: Use 4x4 low gear to conquer steep muddy hills without sliding!</div>
+            </div>
+        </div>
+
+        <!-- Toast Notification Notification Popup -->
+        <div id="game-toast" class="game-toast hidden"></div>
+    </div>
+
+    <!-- Game Scripts -->
+    <script src="js/audio.js"></script>
+    <script src="js/backend.js"></script>
+    <script src="js/vehicles.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/missions.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

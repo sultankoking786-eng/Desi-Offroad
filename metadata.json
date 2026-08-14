@@ -1,0 +1,6 @@
+{
+  "name": "Desi Offroad",
+  "description": "Desi Offroad — Rise of the Village: 3D open-world off-road driving game with Indian rural terrain, missions, garage customization, and realistic physics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
